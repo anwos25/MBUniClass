@@ -1,106 +1,111 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import EditCardModal from './EditCardModal';
-import * as ImagePicker from 'expo-image-picker'; // ใช้ expo-image-picker
+import Swipeable from 'react-native-gesture-handler/Swipeable'; // เกรงว่าอันนี้ดูแต่งง่ายกว่า Swipelistจ้ะ
+import EditCardModal from './EditCardModal'; // โมดอลสำหรับการแก้ไขข้อมูลของการ์ด
+import * as ImagePicker from 'expo-image-picker'; // ใช้ ImagePicker จาก Expo เพื่อให้ผู้ใช้เลือกภาพจากแกลเลอรี
 
-const CustomCard = ({ id, title, content, isCompleted, onToggleComplete, onDelete, onEdit, image }) => {
+const CustomCard = ({ id, title, content, isCompleted, onToggleComplete, onDelete, onEdit, image, isDarkMode, category }) => {
+  const [modalVisible, setModalVisible] = useState(false); // เปิด/ปิดโมดอล
+  const [newTitle, setNewTitle] = useState(''); // เก็บชื่อใหม่
+  const [newContent, setNewContent] = useState(''); // เก็บจำนวนเงืนใหม่
+  const [newImage, setNewImage] = useState(image || '');  // เก็บ URL ของภาพที่เลือกหรือภาพจาก Picker
+  const [selectedCategory, setSelectedCategory] = useState(category);  // เก็บหมวดหมู่ของการ์ด
+  
 
-    const [modalVisible, setModalVisible] = useState(false);
-    const [newTitle, setNewTitle] = useState('');  
-    const [newContent, setNewContent] = useState('');  
-    const [newImage, setNewImage] = useState('');
+  // เมื่อเปิดโมดอล ให้โหลดค่าที่ส่งมาจาก props เข้ามาในฟอร์มแก้ไข
+  useEffect(() => {
+    if (modalVisible) {
+        setNewTitle(title);
+        setNewContent(content.replace(" บาท", "")); // ตัดคำ "บาท" ออกจากเนื้อหา
+        setNewImage(image || ''); // ใช้ image เดิม ถ้าไม่มีให้เป็น ''
+        setSelectedCategory(category); // กำหนดหมวดหมู่ที่เลือก
+    }
+}, [modalVisible, title, content, image, category]);
 
-    useEffect(() => {
-        // เมื่อเปิด modal, set ค่าใหม่ให้เป็น title และ content เดิม
-        if (modalVisible) {
-            setNewTitle(title);
-            setNewContent(content.replace(" บาท", ""));  // ✅ เอา "บาท" ออก
-            setNewImage(image);
-        }
-    }, [modalVisible, title, content, image]);  // เมื่อ title หรือ content เปลี่ยน, ให้รีเฟรชค่าใหม่ใน modal
-
-    const handleEdit = (updatedTitle, updatedContent, updatedImage) => {
-        onEdit(id, updatedTitle, updatedContent, updatedImage);  
-        setModalVisible(false);
-    };
-
-    const pickImage = async () => {
-        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (permissionResult.granted === false) {
-            alert('Permission to access media library is required!');
-            return;
-        }
-
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 1,
-        });
-
-        if (!result.canceled) {
-            setNewImage(result.uri);  // เก็บ URI ของภาพที่เลือก
-        }
-    };
-
-    const renderRightActions = () => (
-        <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(id)}>
-            <Icon name="delete" size={24} color="#fff" />
-        </TouchableOpacity>
-    );
-
-    return (
-        <Swipeable renderRightActions={renderRightActions}>
-            <View style={[styles.card, isCompleted && styles.completedCard]}>
-                <View style={styles.cardHeader}>
-                    <Text style={[styles.title, isCompleted && styles.completedText]}>{title}</Text>
-
-                    <TouchableOpacity onPress={() => onToggleComplete(id, isCompleted)} style={styles.tickIcon}>
-                        <Icon
-                            name={isCompleted ? "check-circle" : "radio-button-unchecked"}
-                            size={28}
-                            color={isCompleted ? "#4caf50" : "#757575"}
-                        />
-                    </TouchableOpacity>
-
-                    <Text style={[styles.statusText, isCompleted && styles.completedText]} >
-                        {isCompleted ? "ซื้อแล้วจ้ะ" : "ยังไม่ได้ซื้อจ้ะ"}
-                    </Text>
-
-                    {/* ปุ่ม Edit */}
-                    <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.editContainer}>
-                        <Icon name="edit" size={30} color="#5f8494" />
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.content, isCompleted && styles.completedText]}>{content}</Text>
-
-                {image ? <Image source={{ uri: image }} style={styles.image} /> : null}
-            </View>
-
-            {/* เปิด EditCardModal และส่งค่า title, content ไปให้แก้ไข */}
-            <EditCardModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSave={handleEdit}
-                title={newTitle}  // ส่ง newTitle และ newContent เพื่อแก้ไข
-                setTitle={setNewTitle}  // ส่ง setTitle ที่เปลี่ยนแปลง title
-                content={newContent}  // ส่ง newContent
-                setContent={setNewContent}  // ส่ง setContent ที่เปลี่ยนแปลง content
-                image={newImage}  // ส่งค่า image ที่แก้ไขไป
-                setImage={setNewImage}  // ส่ง setImage ที่สามารถเปลี่ยนแปลงค่า image ได้
-                pickImage={pickImage} // ส่ง pickImage ฟังก์ชันให้สามารถเลือกภาพได้
-            />
-        </Swipeable>
-    );
+// ฟังก์ชันสำหรับการแก้ไขข้อมูลและส่งกลับไปยัง parent component
+const handleEdit = (updatedTitle, updatedContent, updatedImage, updatedCategory) => {
+  onEdit(id, updatedTitle, updatedContent, updatedImage, updatedCategory);
 };
 
+  // ฟังก์ชันสำหรับปุ่มลบในการ์ด
+  const renderRightActions = () => (
+      <TouchableOpacity style={[styles.deleteButton, { backgroundColor: isDarkMode ? "#b32d2d" : '#e64949' }]} onPress={() => onDelete(id)}>
+          <Icon name="delete" size={24} color="#fff" />
+      </TouchableOpacity>
+  );
 
+  return (
+      <Swipeable renderRightActions={renderRightActions}>
+          <View style={[styles.card, 
+            isDarkMode && isCompleted ? styles.darkCompletedCard : null, 
+            isDarkMode && !isCompleted ? styles.darkCard : null, 
+            !isDarkMode && isCompleted ? styles.completedCard : null]}>
+              
+              <View style={styles.cardHeader}>
+                  <Text style={[styles.title, isCompleted && styles.completedText, isDarkMode && styles.darkText]}>
+                      {title}
+                  </Text>
 
+                   {/* หมวดหมู่ */}
+                   <Text style={[styles.categoryText,isCompleted && styles.completedText,isDarkMode && styles.darkText]}>
+                      {category ? `"${category}"` : ''}
+                  </Text>
+
+                  {/* ปุ่มสำหรับการสลับสถานะการทำเครื่องหมายเสร็จหรือไม่ */}
+                  <TouchableOpacity onPress={() => onToggleComplete(id, isCompleted)} style={styles.tickIcon}>
+                      <Icon
+                          name={isCompleted ? "check-circle" : "radio-button-unchecked"}
+                          size={28}
+                          color={isDarkMode ? (isCompleted ? "#b8b8b8" : "#bbb") : (isCompleted ? "#5f8494" : "#757575")}
+                      />
+                  </TouchableOpacity>
+
+                  <Text style={[styles.statusText, isCompleted && styles.completedText, isDarkMode && styles.darkText]}>
+                      {isCompleted ? "แล้วจ้ะ" : "ยังจ้ะ"}
+                  </Text>
+
+                  {/* ปุ่มแก้ไขการ์ด */}
+                  <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.editContainer}>
+    <Icon name="edit" size={30} color={isDarkMode ? "#ddd" : "#5f8494"} />
+    {/* เพิ่มปุ่มโปร่งใสที่คลุมพื้นที่เพื่อเพิ่มขนาดให้คลิกได้ */}
+    <View style={styles.overlay} />
+</TouchableOpacity>
+                  
+
+              </View>
+
+              <Text style={[styles.content, isCompleted && styles.completedText, isDarkMode && styles.darkText]}>
+                  {content}
+              </Text>
+
+               {/* แสดงภาพที่เลือกหรือจาก URL */}
+        {(newImage || image) ? (
+          <Image source={{ uri: newImage || image }} style={[styles.image, isCompleted && { opacity: 0.3 }]} />
+        ) : null}
+          </View>
+
+          {/* Modal สำหรับการแก้ไขข้อมูลการ์ด */}
+          <EditCardModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleEdit}
+        title={newTitle}
+        setTitle={setNewTitle}
+        content={newContent}
+        setContent={setNewContent}
+        image={newImage}  // ใช้ newImage ที่อัปเดตล่าสุด
+        setImage={setNewImage}  // สามารถเปลี่ยนแปลงได้
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        isDarkMode={isDarkMode}
+      />
+      </Swipeable>
+  );
+};
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff', // พื้นหลังสีขาวสำหรับการ์ดปกติ
+    backgroundColor: '#fff', 
     borderRadius: 15,
     padding: 15,
     marginBottom: 14,
@@ -110,16 +115,26 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
+  darkCard: {
+    backgroundColor: '#333', 
+  },
+  darkCompletedCard: {
+    backgroundColor: '#1a1a1a', // ใช้สีเข้มมากขึ้นในโหมดมืดและการ์ดเสร็จสิ้น
+  },
   completedCard: {
-    backgroundColor: '#e0e0e0', // เปลี่ยนพื้นหลังเป็นสีเทาเมื่อการ์ดเสร็จสิ้น
+    backgroundColor: '#e0e0e0', 
   },
   cardHeader: {
     flexDirection: 'row', 
-    justifyContent: 'space-between', // กระจายพื้นที่ระหว่างหัวเรื่องและไอคอน
+    justifyContent: 'space-between', 
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#000', 
+  },
+  darkText: {
+    color: '#ddd', 
   },
   content: {
     fontSize: 16,
@@ -127,25 +142,24 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   completedText: {
-    textDecorationLine: 'line-through', // ขีดเส้นทับข้อความเมื่อการ์ดเสร็จสิ้น
+    textDecorationLine: 'line-through', 
     color: '#9e9e9e',
   },
   deleteButton: {
-    backgroundColor: '#ff5252', // สีแดงสำหรับปุ่มลบ
     justifyContent: 'center',
     alignItems: 'center',
     width: 70,
-    borderRadius:15,
+    borderRadius: 15,
     marginBottom: 15,
   },
   tickIcon: {
-    left: 345,              // ขยับให้ชิดขอบขวามากขึ้น
+    right: 1, 
     bottom: 2,
     position: 'absolute',
   },
   editContainer: {
-    top: 22,
-    left: 345,         
+    top: 24,
+    right: 0,         
     position: 'absolute',
     padding: 0,
   },
@@ -154,17 +168,39 @@ const styles = StyleSheet.create({
     color: '#757575',
     position: 'absolute',
     right: 40,
-  }, 
+    fontWeight: 'bold',
+  },
   image: {
     width: 380, 
     height: 180,
     borderRadius: 10,
-    flexDirection: 'row', 
     marginTop: 12,
-    justifyContent: 'space-between',
-  },
-  
-  
+  }, 
+  categoryText: {
+    position: 'absolute',
+    top: 42,
+    right: 165,
+    fontSize: 14,
+  },editContainer: {
+    position: 'absolute', 
+    top: 24,
+    right: 0,
+    padding: 0,
+    justifyContent: 'center', 
+    alignItems: 'center',
+    zIndex: 1,  
+},
+
+overlay: {
+    position: 'absolute', 
+    top: -10,             
+    left: -10,            
+    right: -10,           
+    bottom: -10,          
+    backgroundColor: 'transparent', 
+    borderRadius: 25,     
+    zIndex: 2,            
+},
 });
 
 export default CustomCard;
